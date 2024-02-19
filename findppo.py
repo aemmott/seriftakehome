@@ -11,6 +11,7 @@ def isolate_ppo(state, uri):
     reporting_structure_stream = data_stream['reporting_structure']
     decoder = json.JSONDecoder()
     file_id_set = set()
+    set_init = False
     for ro_streamed in reporting_structure_stream:
         ro_dump = json.dumps(ro_streamed, default=stream_enc_default)
         ro = ddict(list, decoder.decode(ro_dump))
@@ -32,9 +33,20 @@ def isolate_ppo(state, uri):
                     file_id = name_tokens[1]
                     cur_ids.add(file_id)
                     id_to_uri_map[file_id].add(mrf)
-            print(cur_ids)
-            print(id_to_uri_map)
-            break
+            if not set_init:
+                set_init = True
+                file_id_set = cur_ids
+            else:
+                file_id_set.intersection_update(cur_ids)
+            if len(file_id_set) == 0:
+                print('failure! empty intersection')
+                exit(1)
+            if len(file_id_set) == 1:
+                for id in file_id_set:
+                    for uri_output in id_to_uri_map[id]:
+                        print(uri_output)
+                    break
+                break
 
 if __name__ == "__main__":
     state = 'NY'
