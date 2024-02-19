@@ -17,7 +17,9 @@ def isolate_ppo(state, uri):
         ro = ddict(list, decoder.decode(ro_dump))
         has_ppo = False
         for p in ro['reporting_plans']:
-            plan_name = p['plan_name'].split('-', 1)[0]
+            plan_name = ''
+            if 'plan_name' in p.keys():
+                plan_name = p['plan_name'].split('-', 1)[0]
             name_tokens = plan_name.split(' ')
             if state in name_tokens and 'PPO' in name_tokens:
                 has_ppo = True
