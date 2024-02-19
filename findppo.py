@@ -21,10 +21,10 @@ def isolate_ppo(state, uri):
                 has_ppo = True
                 break
         if has_ppo:
-            print(ro['reporting_plans'])
-            print(ro['in_network_files'])
+            cur_mrfs = set([f['location'] for f in ro['in_network_files'] if f['description'] == 'In-Network Negotiated Rates Files'])
+            for mrf in cur_mrfs:
+                print(mrf.split('?',1)[0].split('/')[-1])
             break
-
 
 if __name__ == "__main__":
     state = 'NY'
