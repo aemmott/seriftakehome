@@ -8,7 +8,9 @@ This repository contains a python script/module that provides my best attempt at
 Latest Python3 (3.12.1) was used. Two third party packages are required, which can be easily installed with the pip tool (or found at https://pypi.org):
 
 `pip install smart_open`
+
 `pip install smart_open[http]`
+
 `pip install json_stream`
 
 A simple bash script was provided to run the above commands, but not all systems will manage python environments in the same way.
