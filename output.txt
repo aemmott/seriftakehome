@@ -1,0 +1,8 @@
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_05_08.json.gz
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_06_08.json.gz
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_02_08.json.gz
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_03_08.json.gz
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_01_08.json.gz
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_07_08.json.gz
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_04_08.json.gz
+https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/NY_GGHAMEDAP33_08_08.json.gz

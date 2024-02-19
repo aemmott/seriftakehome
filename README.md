@@ -1,70 +1,86 @@
-# Serif Health Takehome Interview
+# Serif Health Takehome Interview Submission - Andrew Emmott
 
-This repository contains the files and instructions for our takehome engineering interview. Please *locally* copy to your own public repo or [import](https://github.com/new/import) to your github account for use in sharing solutions back to us. Direct public forks and pull requests will expose your identity and solution to other candidates also working on this interview question, and we want the interview process to be fair for everyone. 
+This repository contains a python script/module that provides my best attempt at solving the provided problem. This README contains a lot of other information about my observations and how I spent my time. I am not completely certain that my solution is correct, but I expect you are interested in my thought process as much as anything else, so please read. 
 
-## Context
-Serif Health was founded with a mission to make the US healthcare system more transparent, efficient, and affordable for everyone. One of the challenging problems we're solving at Serif Health is making healthcare *pricing* data transparent and uniform for all market participants. There are myriad reasons this is difficult.
+## Provided Solution
 
-At the macro level:
-- Most data in healthcare is protected by law, sensitive by default and tends to be locked up in proprietary systems or data formats.
-- The data aggregators and clearinghouses that do have access to clean, normalized bulk data assets tend to employ extremely expensive and restrictive licensing terms. 
-- While recent price transparency laws have required hospitals and carriers to publish their pricing, compliance and data sharing occurs at varying levels of completeness and consistency.  
+### Set-Up
+Latest Python3 (3.12.1) was used. Two third party packages are required, which can be easily installed with the pip tool (or found at https://pypi.org):
 
-At the micro level:
-- Medical billing and coding for a specific procedure can be very complicated and is contingent on place of service, patient history and comorbidities, structure of insurance arrangements, so on and so forth. Many procedures are lots of N of 1 type cases. 
-- Insurance companies (carriers) establish pre-negotiated non-published contracted rates with each facility, physician group, or health system that reimburses the healthcare provider at a rate and structure very different from what is 'charged'. 
+`pip install smart_open[http]
+pip install json_stream`
 
-Summed together, all this complexity contributes to a general lack of transparency and market efficency in our healthcare system.
+A simple bash script was provided to run the above commands, but not all systems will manage python environments in the same way.
 
+### Running the Solution
 
+The module findppo.py can be run to produced the desired output:
 
-## Objective
-In July 2022, insurance carriers were required to publish their negotiated prices with all providers and facilities under the Transparency in Coverage Act. Pricing for every procedure code for every provider in the country is a lot of data; thus, the published files are extremely large and require some forethought and skill to be able to work with them. 
+`python findppo.py`
 
-Our customers typically want to know and compare reimbursement rates for healthcare services from specific carriers. E.g., what does Anthem reimburse orthopedic surgeons in New York state for total knee replacement surgery? To get there, we need to go to Anthem's Transparency in Coverage website, find their appropriate index file (also called a table of contents file), look up the MRF file URLs in the index for the correct plan, pull the MRF, extract the data, and we have our answer. The challenge for us is that carriers don't always follow the schemas, so these postings and indexes aren't always easy to decipher - it takes some sleuthing and creativity to get to the answers we seek. 
+The script can take up to two optional arguments. By default the script runs assuming the settings specified for the takehome interview: the state (New York) and the uri of the table of contents.
 
-For this interview, we'll give you an index file URL and we'll skip in-network MRF processing for now, since the data elements in the in-network file are significantly more complex and variant. 
+`python findppo.py NY https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/2024-02-01_anthem_index.json.gz` would produce identical output. In theory one could search for other state's PPOs in other months' data, but I understand that the underlying data is not always consistently organized and so might not work; this was just an obvious and easy way to generalize the script.
 
-Your task is to write some code that can open an index file, stream through it, and isolate a set of network files in the index. We'd simply like to know, *what is the list of machine readable file URLs that represent the Anthem PPO network in New York state*? 
+As it happens
 
+`python findppo.py NV`
 
-## Inputs
-The input to this takehome is the Anthem machine readable index file [table of contents](https://antm-pt-prod-dataz-nogbd-nophi-us-east1.s3.amazonaws.com/anthem/2024-02-01_anthem_index.json.gz) for February 2024. 
+seems to print out a file related to the Nevada PPO. (Not certain it is correct though)
 
-You should write code that can open the machine readable index file and process it according to the schema published at [CMS' transparency in coverage repository](https://github.com/CMSgov/price-transparency-guide/tree/master/schemas/table-of-contents), so you can extract the data requested.
+## Description of Development Process and Solution
 
+### Reading and Parsing
 
+Considering question:
+> - How do you handle the file size and format efficiently, when the uncompressed file will exceed memory limitations on most systems?
 
+The provided url points to a large compressed file that, if uncompressed, is a few hundred GB of data so a streaming solution is required (that is, read the file once, don't load it into memory) I have experience with remote streaming, but uncompressing gzip on the fly was new to me. Gzip streaming is not easily handled with the python standard library, but I found a third-party library that easily handles the issue: `smart_open`. A library like `json_stream` is also required to parse json in a streaming context; the standard json library would try to load everything into memory and so is inadequate.
 
-## Outputs
-Your output should be the list of machine readable file URLs corresponding to Anthem's PPO in New York state. Make sure to read through the hints and pointers section before declaring your solution complete.
+### Understanding the Data
 
-## Hints and Pointers
-As you start working with the index, you'll quickly notice that the index file itself is extremly large, data is very frequently repeated, plan descriptions seem to contain random businesses in various regions around the country, and that there are a handful of different url styles. 
+Solving the problem required trying to understand the data. The long list of `reporting_structure_object`s is the data of interst here. These objects relate plans to files. Inspection of these objects seemed to suggest a few things:
 
-- How do you handle the file size and format efficiently, when the uncompressed file will exceed memory limitations on most systems? 
-- When you look at your output URL list, which segments of the URL are changing, which segments are repeating, and what might that mean?
-- Is the description field helpful? Complete? Is Highmark the same as Anthem?
-- Anthem has an interactive MRF lookup system. This lookup can be used to gather additional information - but it requires you to input the EIN or name of an employer who offers an Anthem health plan: [Anthem EIN lookup](https://www.anthem.com/machine-readable-file/search/). How can you find a businesss likely to be in the Anthem NY PPO? How can you use this tool to confirm which underlying file(s) represent the Anthem NY PPO?
+- `plan_id_type` fields were homogenous within each `reporting_structure_object`; that is, "HIOS" and "EIN" id types were not mixed. Similarly, `plan_id` fields were homogenous within reporting objects; again, each object related one plan id to one set of files.
+- For objects where `plan_id_type` equals "HIOS" the plan ids seemed to include the two-letter US State code in them, and the plans were typically (but not always) individual and not group plans. Given the introduction of this EIN lookup tool in the original README -
+> - Anthem has an interactive MRF lookup system. This lookup can be used to gather additional information - but it requires you to input the EIN or name of an employer who offers an Anthem health plan: [Anthem EIN lookup](https://www.anthem.com/machine-readable-file/search/).
+it was assumed that all HIOS entries were not of interest.
+- For object where `plan_id_type` equals "EIN" it seems clear each object pertains to one employer. Further, it did not seem like a given EIN occurred in more than one `reporting_structure_object`. That is, I believe the relationship of employers to `reporting_structure_objects` is 1:1.
+- A given employer might participate in several plans. The `plan_name` field typically took the format "<NAME OF PLAN> - <NAME OF EMPLOYER> - Anthem"; with the name of plan varying in each `reporting_plan` object. This "name" seems like a good way to identify New York PPO-using plans, but the file lists are associated with an employer. How to separate the NY PPO files from the rest is not obvious.
+- Given the hint
+> - Is the description field helpful? Complete? Is Highmark the same as Anthem?
+The description field is helpful, but still not clear. If a plan is not branded under Anthem, it seems obvious from the description. The most common description, however, is simply "In-Network Negotiated Rates Files" a few decriptions are simply "PPO Network" but these pertain to files that are clearly for PPOs outside of New York. Given the descriptions seen, I assumed the files of interest have the description "In-Network Negotiated Rates Files" but that this description is not sufficient to identify the NY PPO.
+- The actual file names under this description typically have a two-letter state code followed by an underscore in them so the search can probably be further narrowed down to `location` fields with "NY_" in them.
+- Using the EIN look up tool with EINs from employers who have plan names that include "NY" and "PPO" reveals a number of files whose label on the website is something like "NY PPO <STUFF>"; the underlying urls match several files appearing in the large table of contents gzip, but unfortunately there isn't anything truly identifying in the file names or descriptions to help solve this problem "correctly". However, this does give us expeted output. It seems that the file name of interest are `NY_GGHAMEDAP33_0[1-8]_08.json.gz` but an algorithmic way of deducing that is still required.
+- A number of plan names seem to feasibly relate to the NY PPO. The earliest occuring such name is "NY SG PPO NETWORK" but others likely suffice.
+- A final important observation is that the data is very large, but it is also extremely redundant. The compression rate on the table of contents is well over 90%. Reading the entire file is not feasible, and also not necessary if the goal is to find the NY PPO. If the correct set of files can be deduced, reading can stop early.
 
-Use your best judgement to proceed here, and discuss your decisions in your writeup. 
+### Proposed Solution
 
+Given the above, the proposed solution is to begin streaming the `reporting_structure_object` list. For each plan name with tokens "NY" and "PPO" in them, observe the `in_network_files` list. Make a set containing each file with description "In-Network Negotiated Rates Files" and "NY" in the file name. If this is the first time we've examined an "NY PPO" plan name, then keep this set as our global set. Otherwise, find the intersection of our global set and this new set and keep this as our new global set. If there is only one file left, then this is our file. (Pedanitc note: we need some logic that abstracts away the x-of-y part of the name. So really, we're looking to winnow down to one group of files with the same name, not just one file.)
 
-### Deliverable
-You should [send us](mailto:engineering@serifhealth.com) a link to a public repository or zip file that contains at miminum:
-1. The script or code used to parse the file and produce output. 
-2. The setup or packaging file(s) required to bootstrap and execute your solution code
-3. The output URL list.
-4. A README file, explaining your solution, how long it took you to write, how long it took to run, and the tradeoffs you made along the way. 
+## Honest Assesment of Time Spent
 
-## Expectations
-### Time vs Quality
-We are a small engineering team with limited resources, and often have to make hard tradeoffs to meet deadlines and make rapid forward progress. We do not want this takehome to take more than a few hours out of your day. So, please timebox coding your solution to two hours max, and know that you have the opportunity to discuss the tradeoffs you made when submitting your solution. Experienced engineers should be able to complete the coding portion in about 90 minutes, perhaps less if you have prior healthcare experience. If you think this will take you dramatically more time than that, let us know before starting the takehome so we can discuss why. 
+The coding/logic/algorithmic part of this problem was not too difficult or time consuming, but I did spend a good amount of time trying to understand the underlying data and so I honestly divulge my time spent here.
 
-If you finish early, we'd recommend adding additional notes or commentary to the README (e.g. discussion of performance characteristics, how you would ideally test/deploy/run your code in a production environment, feature iterations that might come next, so on), but please don't exceed the timebox doing so. 
+### Finding a File Streaming Solution
 
-### Language Choice
-You can choose any language you want, but your solution should be portable enough to run on someone else's machine. 
+As stated, I have experience with both remote file reading and with streaming input, but I had difficulty finding a solution that could stream a gzipped file and was not aware of the smart_open library when I began working on this problem. I spent time trying to define a custom streaming gzip decoder before dicovering the the smart_open library, which suddenly made very short work of the matter. I spent maybe two hours total just trying to get started, but smart_open is a great package to be aware of.
 
-### Dependencies
-You can and *probably should* use dependencies (JSON parsers, type validators, etc) and libraries from public package managers in your language of choice. Again, your solution should be portable enough to run on someone else's machine, so if you leverage packaged dependencies this please make sure relevant setup instructions to install the dependencies and execute the solution are included.
+### Understanding the Data
+
+Understanding the ToC data stream and looking for consistencies in the data was time consuming, especially since I would typically let a for-loop run on the REPL to enumerate specific points of interest. I have explained my process of discovery above and walking through that took perhaps a full dev day (maybe six hours). I could have spent less time on this, as I devised my solution early on, but I was interested in the problem and wanted to gain more confidence in my solution and I also spent a good deal of this time just learning about health insurance data in general becuase I found it interesting.
+
+### Actual Coding
+
+I spent about an hour coding the submitted solution. I aimed to finish in 30 minutes. Because I had allowed myself so much time exploring the data first and had a lot of the coding logic already worked out in the REPL I thouhgt it only fair to minimize my time on real coding. This meant I did not refactor or generalize my code as much as I might have under different circumstances. I staged my coding into several commits so that you can see roughly how much time I spent going from beginning to end. Possible enhancements to the solution are discussed below instead. I also added comments to the script that should explain some other thoughts.
+
+## Possible Enhancements and Improvements
+
+1. The logic is condensed into one function, and this function explicitly prints the discovered files. Ideally the function itself would return a list of relevants file urls to be used externally and only running the module directly would expose the printing logic.
+
+2. A lot of string splitting is in this solution to narrow down specific tokens of interest. For readability and reuseability, these bits of logic should be factored out. A more general solution would likely need to reuse these bit of logic anyway, and a descriptive function name would make it clearer what was happening.
+
+3. A more general use of the set intersection solution provided here would be to find all associations between plan names and files, revealing a much simpler data structure as a proper Table of Contents for further data analysis. Ideally, all information that needs to be gleaned from the provided table of contents should be computed in one pass.
+
+4. Defining custom object classes that can be JSON serializable for the expected json objects in the stream would provide for much safer, more useable  and easier to organize code.
