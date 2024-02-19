@@ -10,6 +10,7 @@ def isolate_ppo(state, uri):
     data_stream = json_stream.load(uri_stream)
     reporting_structure_stream = data_stream['reporting_structure']
     decoder = json.JSONDecoder()
+    file_id_set = set()
     for ro_streamed in reporting_structure_stream:
         ro_dump = json.dumps(ro_streamed, default=stream_enc_default)
         ro = ddict(list, decoder.decode(ro_dump))
@@ -22,8 +23,17 @@ def isolate_ppo(state, uri):
                 break
         if has_ppo:
             cur_mrfs = set([f['location'] for f in ro['in_network_files'] if f['description'] == 'In-Network Negotiated Rates Files'])
+            cur_ids = set()
+            id_to_uri_map = ddict(set)
             for mrf in cur_mrfs:
-                print(mrf.split('?',1)[0].split('/')[-1])
+                file_name = mrf.split('?',1)[0].split('/')[-1]
+                name_tokens = file_name.split('_')
+                if state == name_tokens[0]:
+                    file_id = name_tokens[1]
+                    cur_ids.add(file_id)
+                    id_to_uri_map[file_id].add(mrf)
+            print(cur_ids)
+            print(id_to_uri_map)
             break
 
 if __name__ == "__main__":
